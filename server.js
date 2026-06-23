@@ -4,7 +4,7 @@ const { google } = require('googleapis');
 const app = express();
 app.use(express.json());
 
-// 🔥 CAMINHO DO SEU JSON
+// 🔐 PEGA CREDENCIAL SEGURA DO RENDER
 const key = JSON.parse(process.env.GOOGLE_CREDENTIALS);
 
 const auth = new google.auth.GoogleAuth({
@@ -17,7 +17,7 @@ const androidpublisher = google.androidpublisher({
   auth,
 });
 
-// 🔥 ENDPOINT PARA VALIDAR ASSINATURA
+// 🔥 VALIDAR ASSINATURA
 app.post('/validar', async (req, res) => {
   try {
     const { packageName, subscriptionId, purchaseToken } = req.body;
