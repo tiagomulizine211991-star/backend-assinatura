@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 
 // 🔥 CAMINHO DO SEU JSON
-const key = require('./backend-assinatura.json');
+const key = JSON.parse(process.env.GOOGLE_CREDENTIALS);
 
 const auth = new google.auth.GoogleAuth({
   credentials: key,
