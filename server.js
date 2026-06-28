@@ -20,7 +20,8 @@ const androidpublisher = google.androidpublisher({
 // 🔥 VALIDAR ASSINATURA
 app.post('/validar', async (req, res) => {
   try {
-    const { packageName, subscriptionId, purchaseToken } = req.body;
+    // 👇 SÓ ADICIONOU O EMAIL AQUI
+    const { packageName, subscriptionId, purchaseToken, email } = req.body;
 
     const response = await androidpublisher.purchases.subscriptions.get({
       packageName,
@@ -31,6 +32,8 @@ app.post('/validar', async (req, res) => {
     const status = response.data.paymentState;
 
     if (status === 1) {
+      console.log(Usuário premium: ${email}); // 👈 só log por enquanto
+
       return res.json({ ativo: true });
     } else {
       return res.json({ ativo: false });
