@@ -39,7 +39,7 @@ app.post('/validar', async (req, res) => {
       // 🔥 SALVA USUÁRIO COMO PREMIUM
       usuarios[email] = true;
 
-      console.log(✅ Usuário ${email} ativado como premium);
+      console.log(`✅ Usuário ${email} ativado como premium`);
 
       return res.json({ ativo: true });
     } else {
