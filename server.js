@@ -1,5 +1,6 @@
 const express = require('express');
 const { google } = require('googleapis');
+const usuarios =  {};
 
 const app = express();
 app.use(express.json());
@@ -20,8 +21,11 @@ const androidpublisher = google.androidpublisher({
 // 🔥 VALIDAR ASSINATURA
 app.post('/validar', async (req, res) => {
   try {
-    // 👇 SÓ ADICIONOU O EMAIL AQUI
     const { packageName, subscriptionId, purchaseToken, email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ erro: 'Email não informado' });
+    }
 
     const response = await androidpublisher.purchases.subscriptions.get({
       packageName,
@@ -32,16 +36,25 @@ app.post('/validar', async (req, res) => {
     const status = response.data.paymentState;
 
     if (status === 1) {
-      console.log(Usuário premium: ${email}); // 👈 só log por enquanto
+      // 🔥 SALVA USUÁRIO COMO PREMIUM
+      usuarios[email] = true;
+
+      console.log(✅ Usuário ${email} ativado como premium);
 
       return res.json({ ativo: true });
     } else {
+      console.log(❌ Assinatura inválida para ${email});
+
       return res.json({ ativo: false });
     }
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ erro: 'Erro ao validar assinatura' });
+    console.error("Erro na validação:", error);
+
+    return res.status(500).json({
+      erro: 'Erro ao validar assinatura',
+      detalhe: error.message
+    });
   }
 });
 
