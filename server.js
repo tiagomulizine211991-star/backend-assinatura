@@ -8,6 +8,7 @@ app.use(express.json());
 /* =========================
    🔥 FIREBASE
 ========================= */
+console.log("FIREBASE:", process.env.FIREBASE_CREDENTIALS);
 const firebaseKey = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 
 admin.initializeApp({
