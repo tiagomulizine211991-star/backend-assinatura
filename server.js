@@ -43,7 +43,7 @@ app.post('/validar', async (req, res) => {
 
       return res.json({ ativo: true });
     } else {
-      console.log(❌ Assinatura inválida para ${email});
+      console.log(`❌ Assinatura inválida para ${email}`);
 
       return res.json({ ativo: false });
     }
