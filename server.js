@@ -37,9 +37,24 @@ const androidpublisher = google.androidpublisher({
 ========================= */
 app.post('/validar', async (req, res) => {
   try {
-    const { packageName, subscriptionId, purchaseToken, email } = req.body;
+    const {
+      packageName,
+      subscriptionId,
+      purchaseToken,
+      email,
+    } = req.body;
 
-    const response = await androidpublisher.purchases.subscriptions.get({
+    if (typeof email !== 'string' || email.trim() === '') {
+  return res.status(400).json({
+    ativo: false,
+    erro: 'E-mail do usuário não informado',
+  });
+}
+
+    const emailNormalizado = email.trim().toLowerCase();
+
+    const response =
+        await androidpublisher.purchases.subscriptions.get({
       packageName,
       subscriptionId,
       token: purchaseToken,
@@ -48,22 +63,31 @@ app.post('/validar', async (req, res) => {
     const status = response.data.paymentState;
 
     if (status === 1) {
-      await db.collection('usuarios').doc(email).set({
-        premium: true,
-        atualizadoEm: new Date(),
-      });
+      await db.collection('usuarios').doc(emailNormalizado).set(
+        {
+          email: emailNormalizado,
+          premium: true,
+          atualizadoEm:
+              admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
 
-      console.log(`✅ Usuario ${email} ativado como premium`);
+      console.log(
+        Usuário ${emailNormalizado} ativado como premium,
+      );
 
       return res.json({ ativo: true });
-    } else {
-      console.log(`❌ Assinatura inválida para ${email}`);
-      return res.json({ ativo: false });
     }
 
+    return res.json({ ativo: false });
   } catch (error) {
-    console.error("Erro ao validar:", error);
-    res.status(500).json({ erro: 'Erro ao validar assinatura' });
+    console.error('Erro ao validar:', error);
+
+    return res.status(500).json({
+      ativo: false,
+      erro: 'Erro ao validar assinatura',
+    });
   }
 });
 
