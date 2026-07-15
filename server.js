@@ -74,7 +74,7 @@ app.post('/validar', async (req, res) => {
       );
 
       console.log(
-        Usuário ${emailNormalizado} ativado como premium,
+        `Usuário ${emailNormalizado} ativado como premium`
       );
 
       return res.json({ ativo: true });
