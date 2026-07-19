@@ -1,7 +1,7 @@
 const express = require('express');
 const { google } = require('googleapis');
 const admin = require('firebase-admin');
-
+const crypto = require('crypto');
 const app = express();
 app.use(express.json());
 
@@ -41,48 +41,83 @@ app.post('/validar', async (req, res) => {
       packageName,
       subscriptionId,
       purchaseToken,
-      email,
     } = req.body;
 
-    if (typeof email !== 'string' || email.trim() === '') {
-  return res.status(400).json({
-    ativo: false,
-    erro: 'E-mail do usuário não informado',
-  });
-}
+    console.log('Recebida solicitação de validação', {
+      packageName,
+      subscriptionId,
+      possuiToken:
+        typeof purchaseToken === 'string' &&
+        purchaseToken.trim() !== '',
+    });
 
-    const emailNormalizado = email.trim().toLowerCase();
+    if (
+      typeof packageName !== 'string' ||
+      packageName.trim() === '' ||
+      typeof subscriptionId !== 'string' ||
+      subscriptionId.trim() === '' ||
+      typeof purchaseToken !== 'string' ||
+      purchaseToken.trim() === ''
+    ) {
+      return res.status(400).json({
+        ativo: false,
+        erro: 'Dados da compra incompletos',
+      });
+    }
 
     const response =
         await androidpublisher.purchases.subscriptions.get({
-      packageName,
-      subscriptionId,
-      token: purchaseToken,
+      packageName: packageName.trim(),
+      subscriptionId: subscriptionId.trim(),
+      token: purchaseToken.trim(),
     });
 
-    const status = response.data.paymentState;
+    const statusPagamento = response.data.paymentState;
+    const dataExpiracao = Number(
+      response.data.expiryTimeMillis ?? 0,
+    );
 
-    if (status === 1) {
-      await db.collection('usuarios').doc(emailNormalizado).set(
-        {
-          email: emailNormalizado,
-          premium: true,
-          atualizadoEm:
-              admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+    const pagamentoConfirmado =
+        statusPagamento === 1;
 
-      console.log(
-        `Usuário ${emailNormalizado} ativado como premium`
-      );
+    const naoExpirada =
+        dataExpiracao === 0 ||
+        dataExpiracao > Date.now();
 
-      return res.json({ ativo: true });
-    }
+    const ativa =
+        pagamentoConfirmado && naoExpirada;
 
-    return res.json({ ativo: false });
+    const assinaturaId = crypto
+        .createHash('sha256')
+        .update(purchaseToken.trim())
+        .digest('hex');
+
+    await db
+        .collection('assinaturas')
+        .doc(assinaturaId)
+        .set(
+      {
+        packageName: packageName.trim(),
+        subscriptionId: subscriptionId.trim(),
+        ativa,
+        paymentState: statusPagamento ?? null,
+        expiryTimeMillis:
+            response.data.expiryTimeMillis ?? null,
+        atualizadoEm:
+            admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    console.log(
+      ativa
+          ? 'Assinatura ativa confirmada'
+          : 'Assinatura inativa ou expirada',
+    );
+
+    return res.json({ ativo: ativa });
   } catch (error) {
-    console.error('Erro ao validar:', error);
+    console.error('Erro ao validar assinatura:', error);
 
     return res.status(500).json({
       ativo: false,
