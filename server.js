@@ -100,13 +100,13 @@ for (const plano of planosParaTestar) {
 
     planoValidado = plano;
 
-    console.log(Assinatura encontrada no plano: ${plano});
+    console.log('Assinatura encontrada no plano: ${plano}');
 
     break;
 
   } catch (e) {
 
-    console.log(Plano ${plano} não encontrado.);
+    console.log('Plano ${plano} não encontrado.');
 
   }
 }
