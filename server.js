@@ -43,85 +43,102 @@ app.post('/validar', async (req, res) => {
       purchaseToken,
     } = req.body;
 
-    console.log('Recebida solicitação de validação', {
-      packageName,
-      subscriptionId,
-      possuiToken:
-        typeof purchaseToken === 'string' &&
-        purchaseToken.trim() !== '',
-    });
+    console.log("================================");
+    console.log("VALIDANDO ASSINATURA");
+    console.log("Package:", packageName);
+    console.log("Plano:", subscriptionId);
+    console.log("Token recebido:", !!purchaseToken);
 
     if (
-      typeof packageName !== 'string' ||
-      packageName.trim() === '' ||
-      typeof subscriptionId !== 'string' ||
-      subscriptionId.trim() === '' ||
-      typeof purchaseToken !== 'string' ||
-      purchaseToken.trim() === ''
+      typeof packageName !== "string" ||
+      typeof subscriptionId !== "string" ||
+      typeof purchaseToken !== "string" ||
+      packageName.trim() === "" ||
+      subscriptionId.trim() === "" ||
+      purchaseToken.trim() === ""
     ) {
       return res.status(400).json({
         ativo: false,
-        erro: 'Dados da compra incompletos',
+        erro: "Dados inválidos",
+      });
+    }
+
+    // Planos aceitos
+    const planosPermitidos = [
+      "mensal",
+      "trimestral",
+      "semestral",
+      "anual",
+    ];
+
+    if (!planosPermitidos.includes(subscriptionId.trim())) {
+      console.log("Plano inválido:", subscriptionId);
+
+      return res.status(400).json({
+        ativo: false,
+        erro: "Plano não permitido",
       });
     }
 
     const response =
-        await androidpublisher.purchases.subscriptions.get({
-      packageName: packageName.trim(),
-      subscriptionId: subscriptionId.trim(),
-      token: purchaseToken.trim(),
-    });
-
-    const statusPagamento = response.data.paymentState;
-    const dataExpiracao = Number(
-      response.data.expiryTimeMillis ?? 0,
-    );
-
-    const pagamentoConfirmado =
-        statusPagamento === 1;
-
-    const naoExpirada =
-        dataExpiracao === 0 ||
-        dataExpiracao > Date.now();
-
-    const ativa =
-        pagamentoConfirmado && naoExpirada;
-
-    const assinaturaId = crypto
-        .createHash('sha256')
-        .update(purchaseToken.trim())
-        .digest('hex');
-
-    await db
-        .collection('assinaturas')
-        .doc(assinaturaId)
-        .set(
-      {
+      await androidpublisher.purchases.subscriptions.get({
         packageName: packageName.trim(),
         subscriptionId: subscriptionId.trim(),
-        ativa,
-        paymentState: statusPagamento ?? null,
-        expiryTimeMillis:
-            response.data.expiryTimeMillis ?? null,
-        atualizadoEm:
+        token: purchaseToken.trim(),
+      });
+
+    console.log(response.data);
+
+    const paymentState =
+      response.data.paymentState;
+
+    const expiryTime =
+      Number(response.data.expiryTimeMillis ?? 0);
+
+    const ativa =
+      paymentState === 1 &&
+      (expiryTime === 0 ||
+        expiryTime > Date.now());
+
+    const assinaturaId = crypto
+      .createHash("sha256")
+      .update(purchaseToken.trim())
+      .digest("hex");
+
+    await db
+      .collection("assinaturas")
+      .doc(assinaturaId)
+      .set(
+        {
+          packageName: packageName.trim(),
+          subscriptionId: subscriptionId.trim(),
+          ativa,
+          paymentState,
+          expiryTimeMillis: expiryTime,
+          atualizadoEm:
             admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+        },
+        { merge: true }
+      );
 
     console.log(
       ativa
-          ? 'Assinatura ativa confirmada'
-          : 'Assinatura inativa ou expirada',
+        ? "ASSINATURA ATIVA"
+        : "ASSINATURA INATIVA"
     );
 
-    return res.json({ ativo: ativa });
-  } catch (error) {
-    console.error('Erro ao validar assinatura:', error);
+    return res.json({
+      ativo: ativa,
+      plano: subscriptionId.trim(),
+      expiraEm: expiryTime,
+    });
+
+  } catch (e) {
+    console.error(e);
 
     return res.status(500).json({
       ativo: false,
-      erro: 'Erro ao validar assinatura',
+      erro: e.message,
     });
   }
 });
