@@ -65,11 +65,12 @@ app.post('/validar', async (req, res) => {
 
     // Planos aceitos
     const planosPermitidos = [
-      "mensal",
-      "trimestral",
-      "semestral",
-      "anual",
-    ];
+  "assinatura_mensal",
+  "mensal",
+  "trimestral",
+  "semestral",
+  "anual",
+];
 
     if (!planosPermitidos.includes(subscriptionId.trim())) {
       console.log("Plano inválido:", subscriptionId);
@@ -80,12 +81,42 @@ app.post('/validar', async (req, res) => {
       });
     }
 
-    const response =
+    let response = null;
+let planoValidado = null;
+
+const planosParaTestar = [
+  subscriptionId.trim(),
+  "assinatura_mensal",
+];
+
+for (const plano of planosParaTestar) {
+  try {
+    response =
       await androidpublisher.purchases.subscriptions.get({
         packageName: packageName.trim(),
-        subscriptionId: subscriptionId.trim(),
+        subscriptionId: plano,
         token: purchaseToken.trim(),
       });
+
+    planoValidado = plano;
+
+    console.log(Assinatura encontrada no plano: ${plano});
+
+    break;
+
+  } catch (e) {
+
+    console.log(Plano ${plano} não encontrado.);
+
+  }
+}
+
+if (!response) {
+  return res.status(404).json({
+    ativo: false,
+    erro: "Assinatura não encontrada.",
+  });
+}
 
     console.log(response.data);
 
@@ -111,7 +142,7 @@ app.post('/validar', async (req, res) => {
       .set(
         {
           packageName: packageName.trim(),
-          subscriptionId: subscriptionId.trim(),
+          subscriptionId: planoValidado,
           ativa,
           paymentState,
           expiryTimeMillis: expiryTime,
@@ -129,7 +160,7 @@ app.post('/validar', async (req, res) => {
 
     return res.json({
       ativo: ativa,
-      plano: subscriptionId.trim(),
+      subscriptionId: planoValidado,
       expiraEm: expiryTime,
     });
 
